@@ -1,0 +1,427 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Resources": {
+    "cftestvpc001": {
+      "Type": "AWS::EC2::VPC",
+      "Properties": {
+        "CidrBlock": "10.128.50.128/27",
+        "InstanceTenancy": "default",
+        "EnableDnsSupport": "true",
+        "EnableDnsHostnames": "true",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "vpc-dfc-amw"
+          }
+        ]
+      }
+    },
+    "cftestsubnet001": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "CidrBlock": "10.128.50.128/28",
+        "AvailabilityZone": "ap-southeast-1a",
+        "VpcId": {
+          "Ref": "cftestvpc001"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "cftestsubnet-1a"
+          }
+        ]
+      }
+    },
+    "cftestsubnet002": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "CidrBlock": "10.128.50.144/28",
+        "AvailabilityZone": "ap-southeast-1b",
+        "VpcId": {
+          "Ref": "cftestvpc001"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "cftestsubnet-1b"
+          }
+        ]
+      }
+    },
+    "cftestigw001": {
+      "Type": "AWS::EC2::InternetGateway",
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "cftestigw001"
+          }
+        ]
+      }
+    },
+    "cftestdhcp001": {
+      "Type": "AWS::EC2::DHCPOptions",
+      "Properties": {
+        "DomainName": "ap-southeast-1.compute.internal",
+        "DomainNameServers": [
+          "AmazonProvidedDNS"
+        ]
+      }
+    },
+    "cftestnetacl001": {
+      "Type": "AWS::EC2::NetworkAcl",
+      "Properties": {
+        "VpcId": {
+          "Ref": "cftestvpc001"
+        }
+      }
+    },
+    "cftestrtb001": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": {
+          "Ref": "cftestvpc001"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "cftestrtb001"
+          }
+        ]
+      }
+    },
+    "cftestelb001": {
+      "Type": "AWS::ElasticLoadBalancing::LoadBalancer",
+      "Properties": {
+        "Scheme": "internal",
+        "Subnets": [
+          {
+            "Ref": "cftestsubnet001"
+          },
+          {
+            "Ref": "cftestsubnet002"
+          }
+        ],
+        "HealthCheck": {
+          "HealthyThreshold": "10",
+          "Interval": "30",
+          "Target": "HTTP:8000/AJ/KeepAlive_jpadbpmrep1.html",
+          "Timeout": "5",
+          "UnhealthyThreshold": "2"
+        },
+        "Instances": [
+          {
+            "Ref": "cftestinubit002"
+          },
+          {
+            "Ref": "cftestinubit001"
+          }
+        ],
+        "SecurityGroups": [
+          {
+            "Ref": "cftestsecgroup001"
+          }
+        ],
+        "Listeners": [
+          {
+            "InstancePort": "8000",
+            "LoadBalancerPort": "80",
+            "Protocol": "HTTP",
+            "InstanceProtocol": "HTTP"
+          }
+        ]
+      }
+    },
+    "cftestinubit001": {
+      "Type": "AWS::EC2::Instance",
+      "Properties": {
+        "DisableApiTermination": "FALSE",
+        "ImageId": "ami-b83a08ea",
+        "InstanceType": "t2.medium",
+        "KeyName": "amwayawsdfc",
+        "Monitoring": "false",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "cftestec2instance001"
+          }
+        ],
+        "NetworkInterfaces": [
+          {
+            "DeleteOnTermination": "true",
+            "Description": "Primary network interface",
+            "DeviceIndex": 0,
+            "SubnetId": {
+              "Ref": "cftestsubnet001"
+            },
+            "PrivateIpAddresses": [
+              {
+                "PrivateIpAddress": "10.128.50.136",
+                "Primary": "true"
+              }
+            ],
+            "GroupSet": [
+              {
+                "Ref": "cftestsecgroup001"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "cftestinubit002": {
+      "Type": "AWS::EC2::Instance",
+      "Properties": {
+        "DisableApiTermination": "FALSE",
+        "ImageId": "ami-b83a08ea",
+        "InstanceType": "t2.medium",
+        "KeyName": "amwayawsdfc",
+        "Monitoring": "false",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "cftestec2instance002"
+          }
+        ],
+        "NetworkInterfaces": [
+          {
+            "DeleteOnTermination": "true",
+            "Description": "Primary network interface",
+            "DeviceIndex": 0,
+            "SubnetId": {
+              "Ref": "cftestsubnet001"
+            },
+            "PrivateIpAddresses": [
+              {
+                "PrivateIpAddress": "10.128.50.137",
+                "Primary": "true"
+              }
+            ],
+            "GroupSet": [
+              {
+                "Ref": "cftestsecgroup001"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "cftestrds001": {
+      "Type": "AWS::RDS::DBInstance",
+      "Properties": {
+        "DBInstanceClass": "db.m3.medium",
+        "Port": "1433",
+        "AllocatedStorage": "200",
+        "DBSnapshotIdentifier": "testsnapshot",
+        "BackupRetentionPeriod": "7",
+        "Engine": "sqlserver-se",
+        "EngineVersion": "10.50.2789.0.v1",
+        "LicenseModel": "license-included",
+        "MasterUsername": "dfcuser",
+        "MasterUserPassword": "MyPassword",
+        "PreferredBackupWindow": "19:26-19:56",
+        "PreferredMaintenanceWindow": "wed:15:30-wed:16:00",
+        "VPCSecurityGroups": [
+          {
+            "Ref": "cftestsecgroup001"
+          }
+        ],
+        "DBSubnetGroupName": {
+          "Ref": "cftestsubnetgroup001"
+        }
+      }
+    },
+    "cftestsubnetgroup001": {
+      "Type": "AWS::RDS::DBSubnetGroup",
+      "Properties": {
+        "DBSubnetGroupDescription": "subnet-rds",
+        "SubnetIds": [
+          {
+            "Ref": "cftestsubnet001"
+          },
+          {
+            "Ref": "cftestsubnet002"
+          }
+        ]
+      }
+    },
+    "cftestsecgroup001": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "dfc-securitygroup-amw",
+        "VpcId": {
+          "Ref": "cftestvpc001"
+        },
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "-1",
+            "CidrIp": "10.0.0.0/8"
+          },
+          {
+            "IpProtocol": "-1",
+            "CidrIp": "172.16.0.0/12"
+          }
+        ],
+        "SecurityGroupEgress": [
+          {
+            "IpProtocol": "-1",
+            "CidrIp": "0.0.0.0/0"
+          }
+        ]
+      }
+    },
+    "cftestrdssecgroups001": {
+      "Type": "AWS::RDS::DBSecurityGroup",
+      "Properties": {
+        "GroupDescription": "default"
+      }
+    },
+    "acl1": {
+      "Type": "AWS::EC2::NetworkAclEntry",
+      "Properties": {
+        "CidrBlock": "0.0.0.0/0",
+        "Egress": true,
+        "Protocol": "-1",
+        "RuleAction": "allow",
+        "RuleNumber": "100",
+        "NetworkAclId": {
+          "Ref": "cftestnetacl001"
+        }
+      }
+    },
+    "acl2": {
+      "Type": "AWS::EC2::NetworkAclEntry",
+      "Properties": {
+        "CidrBlock": "0.0.0.0/0",
+        "Protocol": "-1",
+        "RuleAction": "allow",
+        "RuleNumber": "100",
+        "NetworkAclId": {
+          "Ref": "cftestnetacl001"
+        }
+      }
+    },
+    "subnetacl1": {
+      "Type": "AWS::EC2::SubnetNetworkAclAssociation",
+      "Properties": {
+        "NetworkAclId": {
+          "Ref": "cftestnetacl001"
+        },
+        "SubnetId": {
+          "Ref": "cftestsubnet001"
+        }
+      }
+    },
+    "subnetacl2": {
+      "Type": "AWS::EC2::SubnetNetworkAclAssociation",
+      "Properties": {
+        "NetworkAclId": {
+          "Ref": "cftestnetacl001"
+        },
+        "SubnetId": {
+          "Ref": "cftestsubnet002"
+        }
+      }
+    },
+    "gw1": {
+      "Type": "AWS::EC2::VPCGatewayAttachment",
+      "Properties": {
+        "VpcId": {
+          "Ref": "cftestvpc001"
+        },
+        "InternetGatewayId": {
+          "Ref": "cftestigw001"
+        }
+      }
+    },
+    "subnetroute1": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "cftestrtb001"
+        },
+        "SubnetId": {
+          "Ref": "cftestsubnet001"
+        }
+      }
+    },
+    "subnetroute2": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "cftestrtb001"
+        },
+        "SubnetId": {
+          "Ref": "cftestsubnet002"
+        }
+      }
+    },
+    "route1": {
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "DestinationCidrBlock": "52.74.63.171/32",
+        "RouteTableId": {
+          "Ref": "cftestrtb001"
+        },
+        "GatewayId": {
+          "Ref": "cftestigw001"
+        }
+      },
+      "DependsOn": "gw1"
+    },
+    "route2": {
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "DestinationCidrBlock": "52.74.58.76/32",
+        "RouteTableId": {
+          "Ref": "cftestrtb001"
+        },
+        "GatewayId": {
+          "Ref": "cftestigw001"
+        }
+      },
+      "DependsOn": "gw1"
+    },
+    "dchpassoc1": {
+      "Type": "AWS::EC2::VPCDHCPOptionsAssociation",
+      "Properties": {
+        "VpcId": {
+          "Ref": "cftestvpc001"
+        },
+        "DhcpOptionsId": {
+          "Ref": "cftestdhcp001"
+        }
+      }
+    },
+    "ingress1": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "GroupId": {
+          "Ref": "cftestsecgroup001"
+        },
+        "IpProtocol": "-1",
+        "CidrIp": "10.0.0.0/8"
+      }
+    },
+    "ingress2": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "GroupId": {
+          "Ref": "cftestsecgroup001"
+        },
+        "IpProtocol": "-1",
+        "CidrIp": "172.16.0.0/12"
+      }
+    },
+    "egress1": {
+      "Type": "AWS::EC2::SecurityGroupEgress",
+      "Properties": {
+        "GroupId": {
+          "Ref": "cftestsecgroup001"
+        },
+        "IpProtocol": "-1",
+        "CidrIp": "0.0.0.0/0"
+      }
+    }
+  }
+}
